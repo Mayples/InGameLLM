@@ -1,0 +1,41 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+  <Script file="InGameLLM.lua"/>
+  <Frame name="InGameLLMFrame" parent="UIParent" enableMouse="true" movable="true">
+    <Size x="400" y="300"/>
+    <Anchors>
+      <Anchor point="CENTER"/>
+    </Anchors>
+    <Scripts>
+      <OnLoad>
+        InGameLLM_OnLoad(self)
+      </OnLoad>
+    </Scripts>
+    <Frames>
+      <!-- Input Box -->
+      <EditBox name="InputBox" inherits="InputBoxTemplate" autoFocus="false">
+        <Size x="350" y="20"/>
+        <Anchors>
+          <Anchor point="TOPLEFT" relativeTo="InGameLLMFrame" relativePoint="TOPLEFT" x="20" y="-20"/>
+        </Anchors>
+        <Scripts>
+          <OnEnterPressed>
+            InGameLLM_ProcessQuery(self:GetText())
+            self:SetText("")
+          </OnEnterPressed>
+        </Scripts>
+      </EditBox>
+      <!-- Output Scroll Frame -->
+      <ScrollFrame name="OutputFrame" inherits="UIPanelScrollFrameTemplate">
+        <Size x="350" y="250"/>
+        <Anchors>
+          <Anchor point="TOPLEFT" relativeTo="InputBox" relativePoint="BOTTOMLEFT" x="0" y="-10"/>
+        </Anchors>
+        <ScrollChild>
+          <SimpleHTML name="OutputText" font="GameFontNormal">
+            <Size x="350" y="250"/>
+          </SimpleHTML>
+        </ScrollChild>
+      </ScrollFrame>
+    </Frames>
+  </Frame>
+</Ui>

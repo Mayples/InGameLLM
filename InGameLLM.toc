@@ -1,0 +1,6 @@
+## Interface: 100200  # Update to your WoW client version
+## Title: In-Game LLM Assistant
+## Author: YourName
+## Version: 1.0
+InGameLLM.xml
+InGameLLM.lua
