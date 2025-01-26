@@ -1,6 +1,11 @@
-## Interface: 100200  # Update to your WoW client version
-## Title: In-Game LLM Assistant
-## Author: YourName
-## Version: 1.0
-InGameLLM.xml
+## Interface: 100200
+## Title: In-Game LLM
+## Author: Mayples
+## Version: 1.1
+## SavedVariables: InGameLLM_DB
+
 InGameLLM.lua
+InGameLLM.xml
+InGameLLM_DB.lua
+InGameLLM_DB_Items.lua
+InGameLLM_DB_Quests.lua
