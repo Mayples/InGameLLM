@@ -1,4 +1,4 @@
-# InGameLLM - WoW Addon (WIP)
+# Loremaster's Lexicon an InGameLLM - WoW Addon (WIP)
 
 ## Overview
 InGameLLM is a World of Warcraft addon designed to enhance the in-game experience by providing dynamic and interactive query results for players. It allows users to input queries and view structured responses with icons and details within the game's UI.
