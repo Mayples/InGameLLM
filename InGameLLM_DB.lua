@@ -1,17 +1,38 @@
-local DB = {
+InGameLLM_DB = InGameLLM_DB or {
     ITEMS = {},
     QUESTS = {},
-    NPC = {}
+    NPCS = {},
+    ZONES = {},
+    TIPS = {}
 }
 
-function DB:Merge(newDB)
-    for category, entries in pairs(newDB) do
-        if self[category] then
-            for id, data in pairs(entries) do
-                self[category][id] = data
-            end
+-- Add Merge function to database
+function InGameLLM_DB:Merge(data)
+    for category, entries in pairs(data) do
+        self[category] = self[category] or {}
+        for id, entry in pairs(entries) do
+            entry.entryID = id
+            entry.category = category
+            entry.keywords = entry.keywords or {}
+            self[category][id] = entry
         end
     end
 end
 
-InGameLLM_DB = DB
+
+-- Assign to global AFTER defining Merge
+
+
+-- Registration function (call Merge via DB)
+function LoremasterLexicon_RegisterDataPack(dataPack)
+    DB:Merge(dataPack)  -- Directly use DB instead of InGameLLM_DB
+end
+
+
+
+
+
+-- Run when the player enters the world
+
+
+--InGameLLM_DB = DB

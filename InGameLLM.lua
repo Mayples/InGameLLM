@@ -1,3 +1,8 @@
+
+
+-- Add Merge function to database
+
+
 -- =============================================
 -- Database Entry UI
 -- =============================================
@@ -30,7 +35,7 @@ local function CreateEntryFrame()
     -- Title
     local title = entryFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOP", 0, -15)
-    title:SetText("Create New Strategy Entry")
+    title:SetText("Create New Lexicon Entry")
 
     -- Close Button
     local closeBtn = CreateFrame("Button", nil, entryFrame, "UIPanelCloseButton")
@@ -38,7 +43,31 @@ local function CreateEntryFrame()
     closeBtn:SetScript("OnClick", function() entryFrame:Hide() end)
 
     -- Category Dropdown
-    local categories = {"ITEMS", "QUESTS", "NPCS", "ZONES", "TIPS"}
+    --local categories = {"ITEMS", "QUESTS", "NPCS", "ZONES", "TIPS"}
+    local function GetCategories()
+        local cats = {}
+        for cat in pairs(InGameLLM_DB) do
+            table.insert(cats, cat)
+        end
+        table.sort(cats)
+        return cats
+    end
+    --much better category selector
+    UIDropDownMenu_Initialize(dd, function()
+        for _, cat in ipairs(GetCategories()) do
+            UIDropDownMenu_AddButton({
+                text = cat,
+                func = function() 
+                    UIDropDownMenu_SetText(dd, cat)
+                    entryFrame.category = cat
+                end
+            })
+        end
+    end)
+
+
+    
+    --[[ 
     local dd = CreateFrame("Frame", "LLM_CategoryDD", entryFrame, "UIDropDownMenuTemplate")
     dd:SetPoint("TOPLEFT", 20, -50)
     UIDropDownMenu_SetWidth(dd, 150)
@@ -52,7 +81,7 @@ local function CreateEntryFrame()
                 end
             })
         end
-    end)
+    end) --]]
 
     -- Entry Name
     local nameEB = CreateFrame("EditBox", "LLM_NameInput", entryFrame, "InputBoxTemplate")
@@ -297,9 +326,9 @@ function InGameLLM_OnLoad(frame)
 end
 
 -- =============================================
--- Fuzzy Search
+-- Fuzzy Search v1
 -- =============================================
-
+--[[
 local function FuzzyMatch(input, target)
     input = input:lower()
     target = target:lower()
@@ -315,102 +344,136 @@ local function FuzzyMatch(input, target)
     end
     return j > #input
 end
+]]
+-- =============================================
+-- Fuzzy Score + Search
+-- =============================================
+local function FuzzyScore(input, target)
+    input = input:lower()
+    target = target:lower()
+    local score = 0
+    local j = 1
+    for i = 1, #target do
+        if j > #input then break end
+        if target:sub(i,i) == input:sub(j,j) then
+            score = score + 1
+            j = j + 1
+        end
+    end
+    return score
+end
 
--- =============================================
--- Query Processing
--- =============================================
 
 function InGameLLM_ProcessQuery(input)
-    input = input:trim()
-    wipe(debugKeywords)
+input = input:trim()
+wipe(debugKeywords)
 
-    if #input < 2 then
-        for i = 1, MAX_RESULTS do
-            if resultFrames[i] then
-                resultFrames[i]:Hide()
-            end
-        end
-        DebugText:SetText("No query")
-        return
-    end
-    
-    local matches = {}
-    if InGameLLM_DB then
-        for category, entries in pairs(InGameLLM_DB) do
-            if type(entries) == "table" then
-                for id, data in pairs(entries) do
-                    if type(data) == "table" and data.keywords then
-                        local match = false
-                        for _, keyword in ipairs(data.keywords) do
-                            if FuzzyMatch(input, keyword) then
-                                match = true
-                                break
-                            end
-                        end
-                        if match then
-                            table.insert(matches, {
-                                name = data.name or "Unknown",
-                                response = data.response or "No description",
-                                icon = data.icon or "inv_misc_questionmark",
-                                category = category or "Misc",
-                                keywords = data.keywords,  -- Include keywords
-                                entryID = id  -- Include entryID
-                            })
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    print("Found matches:", #matches) -- Debug print
-    -- Sort results
-    table.sort(matches, function(a,b)
-        if a.category == b.category then
-            return a.name < b.name
-        end
-        return a.category < b.category
-    end)
-    
-    -- Display results
+if #input < 2 then
     for i = 1, MAX_RESULTS do
-        local f = resultFrames[i]
-        if f then
-            if matches[i] then
-                -- Set category text (uppercase singular form)
-                local categoryText = "TYPE"
-                if matches[i].category == "ITEMS" then
-                    categoryText = "ITEM"
-                elseif matches[i].category == "QUESTS" then
-                    categoryText = "QUEST"
-                elseif matches[i].category == "NPCS" then
-                    categoryText = "NPC"
-                elseif matches[i].category == "ZONES" then
-                    categoryText = "ZONE"
-                elseif matches[i].category == "TIPS" then
-                    categoryText = "TIP"
+        if resultFrames[i] then
+            resultFrames[i]:Hide()
+        end
+    end
+    DebugText:SetText("No query")
+    return
+end
+
+local matches = {}
+if InGameLLM_DB then
+    for category, entries in pairs(InGameLLM_DB) do
+        for id, data in pairs(entries) do
+            local score = 0
+            local keywordMatches = {}
+
+            -- Check keywords (higher weight)
+            for _, keyword in ipairs(data.keywords or {}) do
+                local keyScore = FuzzyScore(input, keyword)
+                if keyScore > 0 then
+                    score = score + keyScore * 3
+                    table.insert(keywordMatches, {keyword = keyword, score = keyScore})
                 end
-                f.Category:SetText(categoryText)
-    
-                -- Existing icon and text setup
-                f.Icon:SetTexture("Interface\\Icons\\"..matches[i].icon)
-                f.Text:SetText(matches[i].name)
-                f.data = matches[i]
-                f:Show()
-            else
-                f:Hide()
+            end
+
+            -- Check name (medium weight)
+            local nameScore = FuzzyScore(input, data.name or "")
+            score = score + nameScore * 2
+
+            -- Check response (lower weight)
+            local responseScore = FuzzyScore(input, data.response or "")
+            score = score + responseScore
+
+            if score > 0 then
+                table.insert(matches, {
+                    score = score,
+                    name = data.name,
+                    response = data.response,
+                    icon = data.icon,
+                    category = category,
+                    keywords = data.keywords,
+                    entryID = id,
+                    keywordMatches = keywordMatches
+                })
             end
         end
     end
-    InGameLLM_OutputFrame:SetVerticalScroll(0)
-    
-    -- Update debug panel
-    local debugOutput = {}
-    for keyword in pairs(debugKeywords) do
-        table.insert(debugOutput, "|cFF00FF00"..keyword.."|r")
+end
+
+-- Sort by score descending
+table.sort(matches, function(a, b)
+    return a.score > b.score
+end)
+
+-- Display results
+for i = 1, MAX_RESULTS do
+    local f = resultFrames[i]
+    if f then
+        if matches[i] then
+            f.Category:SetText(matches[i].category)
+            f.Icon:SetTexture("Interface\\Icons\\"..matches[i].icon)
+            f.Text:SetText(matches[i].name)
+            f.data = matches[i]
+            f:Show()
+
+            -- Add matched keywords to debug panel
+            for _, match in ipairs(matches[i].keywordMatches) do
+                local color
+                if match.score >= 3 then
+                    color = "|cFF00FF00"  -- Green (strong match)
+                elseif match.score >= 2 then
+                    color = "|cFFFFFF00"  -- Yellow (medium match)
+                else
+                    color = "|cFFFF0000"  -- Red (weak match)
+                end
+                debugKeywords[match.keyword] = color .. match.keyword .. "|r"
+            end
+        else
+            f:Hide()
+        end
     end
-    DebugText:SetText(table.concat(debugOutput, "\n") or "|cFFFF0000No keyword matches|r")
-    DebugScroll:SetVerticalScroll(0)
+end
+
+-- Update debug panel
+local debugOutput = {}
+for keyword, coloredText in pairs(debugKeywords) do
+    table.insert(debugOutput, {text = coloredText, color = coloredText:sub(3, 10)})  -- Extract color code
+end
+
+-- Sort by color (green > yellow > red)
+table.sort(debugOutput, function(a, b)
+    if a.color == b.color then
+        return a.text < b.text
+    end
+    -- Green (00FF00) > Yellow (FFFF00) > Red (FF0000)
+    return a.color > b.color
+end)
+
+-- Combine sorted keywords into a single string
+local debugText = ""
+for _, entry in ipairs(debugOutput) do
+    debugText = debugText .. entry.text .. "\n"
+end
+DebugText:SetText(debugText ~= "" and debugText or "|cFFFF0000No keyword matches|r")
+DebugScroll:SetVerticalScroll(0)
 end
 
 -- =============================================

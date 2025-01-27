@@ -1,11 +1,10 @@
 ## Interface: 100200
-## Title: In-Game LLM
+## Title: Loremaster's Lexicon
 ## Author: Mayples
 ## Version: 1.1
 ## SavedVariables: InGameLLM_DB
 
 InGameLLM.lua
-InGameLLM.xml
 InGameLLM_DB.lua
-InGameLLM_DB_Items.lua
-InGameLLM_DB_Quests.lua
+InGameLLM_DefaultData.lua
+InGameLLM.xml
